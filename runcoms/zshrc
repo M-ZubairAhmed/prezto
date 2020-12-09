@@ -10,4 +10,53 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+function rmPostgresPid {
+  rm -rf /Users/m-zubairahmed/Library/Application\ Support/Postgres/var-11/postmaster.pid
+  print "Removed postmaster.pid from Postgres 11"
+}
+
+function lhrestore {
+  set -v
+  if [ -z "$1" ]
+  then
+    database="psy_dev"
+  else
+    database="$1"
+  fi
+  psql -d $database -c "DO \$\$ DECLARE \
+    r RECORD; \
+    BEGIN \
+        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP \
+            EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE'; \
+        END LOOP; \
+    END \$\$;"
+  dump=`ls -t ~/projects/work/db_dumps/*.dump | head -1`
+  pg_restore --no-owner --no-acl -d $database < $dump
+  print "DONE"
+}
+
+export PATH="$PATH:$HOME/bin"
+
+# Postgres in path
+export PATH="$PATH:/Applications/Postgres.app/Contents/Versions/11/bin"
+
+# Mysql in path
+export PATH="$PATH:/usr/local/mysql/bin"
+
+eval "$(nodenv init -)"
+eval "$(rbenv init -)"
+eval "$(direnv hook zsh)"
+
 # Customize to your needs...
+alias be='bundle exec'
+alias ber='bundle exec rake'
+alias berss='bundle exec rails s -p 3030 -b "ssl://0.0.0.0:3030?key=./support/dev-ssl/lvh.me.key&cert=./support/dev-ssl/lvh.me.pem"'
+alias bers='bundle exec rails s -p 3030'
+alias rcc="git ls-files -m | xargs ls -1 2>/dev/null | grep '\.rb$' | xargs bundle exec rubocop"
+alias ubers="bundle && yarn install --check-files && bers"
+alias uberss="bundle && yarn install --check-files && berss"
+alias lhstart="cd ~/projects/work/psychometrics && bundle && yarn install --check-files && mert start psy"
+alias lhstarts="cd ~/projects/work/psychometrics && bundle && yarn install --check-files && mert start psys"
+alias rtest="bundle exec rake db:drop db:create db:structure:load RAILS_ENV=test"
+# alias lhbackup="heroku pg:backups:capture --app tte-lighthouse-prod && heroku pg:backups:download --app tte-lighthouse-prod && mv latest.dump \"../db-dumps/$(date +%F-%H_%M).live.dump\""
+
